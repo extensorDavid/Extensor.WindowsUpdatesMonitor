@@ -3,12 +3,12 @@
 .SYNOPSIS
     Removes the UpdateNag Windows service.
 .PARAMETER InstallDir
-    Install folder to delete (default: C:\Program Files\UpdateNag).
+    Install folder to delete (default: C:\Program Files\Extensor.WindowsUpdatesNagger).
 .PARAMETER RemoveData
     Also delete %ProgramData%\UpdateNag (state and logs).
 #>
 param(
-    [string]$InstallDir = (Join-Path $env:ProgramFiles 'UpdateNag'),
+    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesNagger'),
     [switch]$RemoveData
 )
 

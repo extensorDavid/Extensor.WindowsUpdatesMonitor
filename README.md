@@ -18,7 +18,7 @@ Requires the .NET 8 SDK.
 dotnet publish src/UpdateNag -c Release -o publish
 ```
 
-This produces a self-contained single-file `publish\UpdateNag.exe` (win-x64) plus `appsettings.json`.
+This produces a self-contained single-file `publish\Extensor.WindowsUpdatesNagger.exe` (win-x64) plus an optional `appsettings.json` (the defaults are built in).
 
 ## Configuration
 
@@ -51,13 +51,15 @@ If the intranet can't be reached (off-site, not on the domain, intranet down), t
 
 ## Install
 
-From an elevated PowerShell prompt in the repository root, after publishing:
+Put `install.ps1` next to `Extensor.WindowsUpdatesNagger.exe` (or run it from the repository root after publishing; it also looks in `.\publish`), then from an elevated PowerShell prompt:
 
 ```powershell
 .\install.ps1
 ```
 
-This copies the files to `C:\Program Files\UpdateNag`, registers the `UpdateNag` Event Log source, creates the service (LocalSystem, Automatic (Delayed Start), restart on failure) and starts it. Re-running it upgrades the exe and keeps an existing `appsettings.json`.
+This copies the files to `C:\Program Files\Extensor.WindowsUpdatesNagger`, registers the `UpdateNag` Event Log source, creates the `UpdateNag` service ("Extensor Windows Updates Nagger": LocalSystem, Automatic (Delayed Start), restart on failure), starts it and checks it is running. Re-running it upgrades the exe and keeps an existing `appsettings.json`.
+
+If scripts are blocked on the PC, run `Set-ExecutionPolicy -Scope Process Bypass` first in the same prompt.
 
 ## Testing
 
@@ -65,10 +67,10 @@ Run in a console instead of as a service:
 
 ```powershell
 # Normal schedule, logging to the console
-.\publish\UpdateNag.exe --console
+.\publish\Extensor.WindowsUpdatesNagger.exe --console
 
 # Check right now and message every active session (ignores the schedule and saved state)
-.\publish\UpdateNag.exe --console --nag-now
+.\publish\Extensor.WindowsUpdatesNagger.exe --console --nag-now
 ```
 
 Run from an elevated prompt so it can read/write `%ProgramData%\UpdateNag` and message other users' sessions; unelevated, it can still message your own session. Set `"DryRun": true` in `appsettings.json` to see the message in the log without popping anything up.
