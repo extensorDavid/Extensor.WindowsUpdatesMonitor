@@ -32,7 +32,6 @@ This produces a self-contained single-file `publish\Extensor.WindowsUpdatesMonit
 | `LogonDelay`     | `00:02:00`   | Wait after a user logs on before reminding them            |
 | `MessageTimeout` | `01:00:00`   | Message box closes itself after this long                  |
 | `MaxTitles`      | `5`          | Update titles listed in the message                        |
-| `IgnoreUpdates`  | `["KB5007651"]` | Updates that never count as pending (title contains one of these); to add more, give the whole list, KB5007651 included |
 | `DryRun`         | `false`      | Log the message instead of sending it                      |
 
 Restart the service after changing settings.
