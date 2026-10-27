@@ -5,8 +5,8 @@ namespace Extensor.WindowsUpdatesMonitor;
 
 /// <summary>
 /// Posts each check's result, with a Norwegian status line, to the intranet (table WindowsUpdatesMonitorStatus).
-/// The service runs as LocalSystem, so Windows authentication sends the PC's own domain account (DOMAIN\PC01$);
-/// the intranet takes the machine name and IP address from the call itself.
+/// The report carries the machine name; the intranet takes the IP address from the connection. The endpoint is
+/// anonymous, but Windows credentials (the PC's domain account) are still offered if IIS asks for them.
 /// </summary>
 public sealed class IntranetReporter : IDisposable
 {
@@ -29,6 +29,7 @@ public sealed class IntranetReporter : IDisposable
     public Task ReportAsync(CheckResult result, CancellationToken cancellationToken) =>
         PostAsync(new
         {
+            Environment.MachineName,
             CheckedAtUtc = DateTime.UtcNow,
             Status = StatusText(result),
             UpdateCount = (int?)result.UpdateCount,
@@ -40,6 +41,7 @@ public sealed class IntranetReporter : IDisposable
     public Task ReportErrorAsync(Exception error, CancellationToken cancellationToken) =>
         PostAsync(new
         {
+            Environment.MachineName,
             CheckedAtUtc = DateTime.UtcNow,
             Status = $"Feil: {error.Message}",
             UpdateCount = (int?)null,

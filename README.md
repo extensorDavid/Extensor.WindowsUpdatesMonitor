@@ -38,7 +38,7 @@ Restart the service after changing settings.
 
 ## Intranet reporting
 
-Nothing to configure: the service posts to `https://intranet.extensor.no/WindowsUpdatesMonitor/Api/Report`. (Only to use another address: add `"ReportUrl"` to the `WindowsUpdatesMonitor` section of `appsettings.json`.) The service runs as LocalSystem, so the call is made with Windows authentication as the PC's own domain account (`DOMAIN\PC01$`): no password or key is stored on the PC. The intranet only accepts computer accounts there, takes the machine name from the account and the IP address from the connection, and keeps one row per machine in the `WindowsUpdatesMonitorStatus` table. This needs domain-joined PCs.
+Nothing to configure: the service posts to `https://intranet.extensor.no/WindowsUpdatesMonitor/Api/Report`. (Only to use another address: add `"ReportUrl"` to the `WindowsUpdatesMonitor` section of `appsettings.json`.) The report carries the machine name; the intranet takes the IP address from the connection and keeps one row per machine in the `WindowsUpdatesMonitorStatus` table. The endpoint allows anonymous access (in IIS, for `WindowsUpdatesMonitor/Api/Report` only), because Windows refuses a Windows login from the intranet server to itself (the loopback check).
 
 If the intranet can't be reached (off-site, not on the domain, intranet down), the service logs that once and carries on with message boxes only; it tries again at every check and logs once when contact is back.
 
