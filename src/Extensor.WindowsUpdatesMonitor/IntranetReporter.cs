@@ -5,8 +5,8 @@ namespace Extensor.WindowsUpdatesMonitor;
 
 /// <summary>
 /// Posts each check's result, with a Norwegian status line, to the intranet (table WindowsUpdatesMonitorStatus).
-/// The report carries the machine name; the intranet takes the IP address from the connection. The endpoint is
-/// anonymous, but Windows credentials (the PC's domain account) are still offered if IIS asks for them.
+/// The report carries the machine name; the intranet takes the IP address from the connection. The call signs in
+/// with Windows authentication as the PC's domain account (the service runs as LocalSystem).
 /// </summary>
 public sealed class IntranetReporter : IDisposable
 {
