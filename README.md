@@ -47,7 +47,7 @@ If the intranet can't be reached (off-site, not on the domain, intranet down), t
 ## Logs
 
 - Windows Event Log: *Application* log, source `Extensor.WindowsUpdatesMonitor`.
-- Text files: `%ProgramData%\Extensor.WindowsUpdatesMonitor\logs\windowsupdatesmonitor-yyyyMMdd.log` (14 days kept).
+- Text files: `%ProgramData%\Extensor.WindowsUpdatesMonitor\logs\windowsupdatesmonitor-yyyyMMdd.log` (only today's file is kept: the others are deleted when the first line of a new day is written).
 
 ## Install
 

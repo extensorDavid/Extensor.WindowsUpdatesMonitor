@@ -1,9 +1,8 @@
 namespace Extensor.WindowsUpdatesMonitor;
 
-/// <summary>Minimal daily-rolling text file logger: logs\windowsupdatesmonitor-yyyyMMdd.log, keeps 14 days.</summary>
+/// <summary>Minimal daily text file logger: logs\windowsupdatesmonitor-yyyyMMdd.log, keeps only today's file.</summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
-    private const int RetainDays = 14;
     private readonly string _directory;
     private readonly object _lock = new();
     private string? _currentFile;
@@ -25,7 +24,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
                 {
                     Directory.CreateDirectory(_directory);
                     _currentFile = file;
-                    DeleteOldFiles();
+                    DeleteOtherDaysFiles(file);
                 }
                 File.AppendAllText(file, line + Environment.NewLine);
             }
@@ -36,11 +35,12 @@ public sealed class FileLoggerProvider : ILoggerProvider
         }
     }
 
-    private void DeleteOldFiles()
+    // Runs when the first line of a day is written (at startup and after midnight).
+    private void DeleteOtherDaysFiles(string today)
     {
         foreach (var file in Directory.GetFiles(_directory, "windowsupdatesmonitor-*.log"))
         {
-            if (File.GetLastWriteTime(file) < DateTime.Now.AddDays(-RetainDays))
+            if (!string.Equals(file, today, StringComparison.OrdinalIgnoreCase))
                 File.Delete(file);
         }
     }
