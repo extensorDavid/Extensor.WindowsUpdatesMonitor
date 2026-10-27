@@ -27,7 +27,7 @@ This produces a self-contained single-file `publish\Extensor.WindowsUpdatesMonit
 | Setting          | Default      | Meaning                                                    |
 |------------------|--------------|------------------------------------------------------------|
 | `CheckInterval`  | `02:00:00`   | How often to check                                         |
-| `StartupDelay`   | `00:05:00`   | Wait after service start before the first check            |
+| `StartupDelay`   | `00:00:10`   | Wait after service start before the first check (the `appsettings.json` in the repo sets 5 minutes) |
 | `RetryDelay`     | `01:00:00`   | Wait before retrying a failed check                        |
 | `LogonDelay`     | `00:02:00`   | Wait after a user logs on before reminding them            |
 | `MessageTimeout` | `01:00:00`   | Message box closes itself after this long                  |

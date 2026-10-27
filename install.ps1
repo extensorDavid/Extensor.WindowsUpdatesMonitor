@@ -72,5 +72,5 @@ $service | Format-Table Name, DisplayName, Status, StartType -AutoSize
 if ($service.Status -ne 'Running') {
     throw "The service is '$($service.Status)', not running. See the Application event log (source $serviceName) and $env:ProgramData\Extensor.WindowsUpdatesMonitor\logs."
 }
-Write-Host "Installed and running. The first check runs in about 5 minutes."
+Write-Host "Installed and running. The first check runs shortly (StartupDelay: 10 seconds, or as set in appsettings.json)."
 Write-Host "Logs: $env:ProgramData\Extensor.WindowsUpdatesMonitor\logs"
