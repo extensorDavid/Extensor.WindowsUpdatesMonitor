@@ -10,10 +10,8 @@ public sealed class NagOptions
     public TimeSpan MessageTimeout { get; set; } = TimeSpan.FromHours(1);
     public int MaxTitles { get; set; } = 5;
 
-    public const string DefaultReportUrl = "https://intranet.extensor.no/WindowsUpdatesNagger/Api/Report";
-
     /// <summary>Intranet endpoint each check's result is posted to. Built in; only set it to use another address.</summary>
-    public string ReportUrl { get; set; } = DefaultReportUrl;
+    public string ReportUrl { get; set; } = "https://intranet.extensor.no/WindowsUpdatesNagger/Api/Report";
 
     /// <summary>Log the message instead of sending it.</summary>
     public bool DryRun { get; set; }
