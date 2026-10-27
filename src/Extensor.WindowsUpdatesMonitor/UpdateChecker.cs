@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Microsoft.Win32;
 
 namespace Extensor.WindowsUpdatesMonitor;
@@ -13,9 +14,14 @@ public sealed class UpdateChecker
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
     };
 
+    private readonly MonitorOptions _options;
     private readonly ILogger<UpdateChecker> _logger;
 
-    public UpdateChecker(ILogger<UpdateChecker> logger) => _logger = logger;
+    public UpdateChecker(IOptions<MonitorOptions> options, ILogger<UpdateChecker> logger)
+    {
+        _options = options.Value;
+        _logger = logger;
+    }
 
     /// <summary>Runs the search on a dedicated thread, since it can take minutes. Throws on failure.</summary>
     public Task<CheckResult> CheckAsync(CancellationToken cancellationToken)
@@ -52,10 +58,17 @@ public sealed class UpdateChecker
             throw new InvalidOperationException($"Windows Update search failed with result code {resultCode}.");
 
         dynamic updates = result.Updates;
-        int count = (int)updates.Count;
-        var titles = new List<string>(count);
-        for (int i = 0; i < count; i++)
-            titles.Add((string)updates[i].Title);
+        int found = (int)updates.Count;
+        var titles = new List<string>(found);
+        for (int i = 0; i < found; i++)
+        {
+            string title = (string)updates[i].Title;
+            if (_options.IgnoreUpdates.Any(ignore => title.Contains(ignore, StringComparison.OrdinalIgnoreCase)))
+                _logger.LogInformation("Ignored (IgnoreUpdates): {Title}", title);
+            else
+                titles.Add(title);
+        }
+        int count = titles.Count;
 
         bool rebootPending = IsRebootPending();
         _logger.LogInformation("Found {Count} pending update(s); reboot pending: {RebootPending}", count, rebootPending);
