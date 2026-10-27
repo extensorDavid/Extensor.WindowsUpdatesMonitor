@@ -4,8 +4,8 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>Extensor.WindowsUpdatesNagger</AssemblyName>
-    <RootNamespace>UpdateNag</RootNamespace>
+    <AssemblyName>Extensor.WindowsUpdatesMonitor</AssemblyName>
+    <RootNamespace>Extensor.WindowsUpdatesMonitor</RootNamespace>
 
     <!-- Self-contained single-file exe for win-x64 -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

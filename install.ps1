@@ -1,23 +1,23 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Installs Extensor.WindowsUpdatesNagger.exe as the UpdateNag Windows service and starts it.
+    Installs Extensor.WindowsUpdatesMonitor.exe as the Extensor.WindowsUpdatesMonitor Windows service and starts it.
 .DESCRIPTION
-    Put this script next to Extensor.WindowsUpdatesNagger.exe (appsettings.json is optional) and run it from an
+    Put this script next to Extensor.WindowsUpdatesMonitor.exe (appsettings.json is optional) and run it from an
     elevated PowerShell prompt. Running it again upgrades an existing install.
 .PARAMETER SourceDir
-    Folder containing Extensor.WindowsUpdatesNagger.exe (default: this script's folder, else .\publish under it).
+    Folder containing Extensor.WindowsUpdatesMonitor.exe (default: this script's folder, else .\publish under it).
 .PARAMETER InstallDir
-    Where to copy the files (default: C:\Program Files\Extensor.WindowsUpdatesNagger).
+    Where to copy the files (default: C:\Program Files\Extensor.WindowsUpdatesMonitor).
 #>
 param(
     [string]$SourceDir,
-    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesNagger')
+    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesMonitor')
 )
 
 $ErrorActionPreference = 'Stop'
-$serviceName = 'UpdateNag'
-$exeName = 'Extensor.WindowsUpdatesNagger.exe'
+$serviceName = 'Extensor.WindowsUpdatesMonitor'
+$exeName = 'Extensor.WindowsUpdatesMonitor.exe'
 $exe = Join-Path $InstallDir $exeName
 
 if (-not $SourceDir) {
@@ -52,11 +52,11 @@ if (-not [System.Diagnostics.EventLog]::SourceExists($serviceName)) {
 
 if (-not $existing) {
     Write-Host "Creating service '$serviceName'"
-    sc.exe create $serviceName binPath= "`"$exe`"" start= delayed-auto obj= LocalSystem DisplayName= "Extensor Windows Updates Nagger" | Out-Host
+    sc.exe create $serviceName binPath= "`"$exe`"" start= delayed-auto obj= LocalSystem DisplayName= "Extensor Windows Updates Monitor" | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "sc.exe create failed ($LASTEXITCODE)" }
 }
 else {
-    sc.exe config $serviceName binPath= "`"$exe`"" start= delayed-auto obj= LocalSystem DisplayName= "Extensor Windows Updates Nagger" | Out-Null
+    sc.exe config $serviceName binPath= "`"$exe`"" start= delayed-auto obj= LocalSystem DisplayName= "Extensor Windows Updates Monitor" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "sc.exe config failed ($LASTEXITCODE)" }
 }
 sc.exe description $serviceName "Checks for pending Windows Updates every 2 hours, reports to the Extensor intranet and reminds logged-in users." | Out-Null
@@ -70,7 +70,7 @@ Start-Sleep -Seconds 5
 $service = Get-Service -Name $serviceName
 $service | Format-Table Name, DisplayName, Status, StartType -AutoSize
 if ($service.Status -ne 'Running') {
-    throw "The service is '$($service.Status)', not running. See the Application event log (source $serviceName) and $env:ProgramData\UpdateNag\logs."
+    throw "The service is '$($service.Status)', not running. See the Application event log (source $serviceName) and $env:ProgramData\Extensor.WindowsUpdatesMonitor\logs."
 }
 Write-Host "Installed and running. The first check runs in about 5 minutes."
-Write-Host "Logs: $env:ProgramData\UpdateNag\logs"
+Write-Host "Logs: $env:ProgramData\Extensor.WindowsUpdatesMonitor\logs"

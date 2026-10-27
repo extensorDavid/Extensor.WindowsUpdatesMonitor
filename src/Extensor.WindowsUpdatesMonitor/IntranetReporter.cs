@@ -1,10 +1,10 @@
 using System.Net.Http.Json;
 using Microsoft.Extensions.Options;
 
-namespace UpdateNag;
+namespace Extensor.WindowsUpdatesMonitor;
 
 /// <summary>
-/// Posts each check's result, with a Norwegian status line, to the intranet (table WindowsUpdatesNaggerStatus).
+/// Posts each check's result, with a Norwegian status line, to the intranet (table WindowsUpdatesMonitorStatus).
 /// The service runs as LocalSystem, so Windows authentication sends the PC's own domain account (DOMAIN\PC01$);
 /// the intranet takes the machine name and IP address from the call itself.
 /// </summary>
@@ -15,11 +15,11 @@ public sealed class IntranetReporter : IDisposable
         Timeout = TimeSpan.FromSeconds(30),
     };
 
-    private readonly NagOptions _options;
+    private readonly MonitorOptions _options;
     private readonly ILogger<IntranetReporter> _logger;
     private bool _unreachable;
 
-    public IntranetReporter(IOptions<NagOptions> options, ILogger<IntranetReporter> logger)
+    public IntranetReporter(IOptions<MonitorOptions> options, ILogger<IntranetReporter> logger)
     {
         _options = options.Value;
         _logger = logger;

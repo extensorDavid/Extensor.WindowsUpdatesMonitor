@@ -1,33 +1,33 @@
 using System.Text;
 using Microsoft.Extensions.Options;
 
-namespace UpdateNag;
+namespace Extensor.WindowsUpdatesMonitor;
 
 /// <summary>
-/// Checks for pending Windows Updates every 2 hours, reports the result to the intranet, and nags logged-in users
+/// Checks for pending Windows Updates every 2 hours, reports the result to the intranet, and reminds logged-in users
 /// about pending updates (each user at most once a day).
 /// </summary>
-public sealed class NagService : BackgroundService
+public sealed class MonitorService : BackgroundService
 {
     private const string Title = "Windows Updates pending / Windows-oppdateringer venter";
 
     // Even when the next check is far away, wake up hourly: timers don't advance while the machine sleeps.
     private static readonly TimeSpan MaxSleep = TimeSpan.FromHours(1);
 
-    // Users logging on are nagged from the last check's result while it is less than a day old.
+    // Users logging on are reminded using the last check's result while it is less than a day old.
     private static readonly TimeSpan ResultMaxAge = TimeSpan.FromHours(24);
 
     private readonly UpdateChecker _checker;
     private readonly SessionMessenger _messenger;
     private readonly IntranetReporter _reporter;
-    private readonly NagOptions _options;
-    private readonly ILogger<NagService> _logger;
+    private readonly MonitorOptions _options;
+    private readonly ILogger<MonitorService> _logger;
     private readonly CancellationToken _stopping;
     private readonly object _lock = new();
-    private readonly NagState _state;
+    private readonly MonitorState _state;
 
-    public NagService(UpdateChecker checker, SessionMessenger messenger, IntranetReporter reporter, IOptions<NagOptions> options,
-        IHostApplicationLifetime lifetime, ILogger<NagService> logger)
+    public MonitorService(UpdateChecker checker, SessionMessenger messenger, IntranetReporter reporter, IOptions<MonitorOptions> options,
+        IHostApplicationLifetime lifetime, ILogger<MonitorService> logger)
     {
         _checker = checker;
         _messenger = messenger;
@@ -40,7 +40,7 @@ public sealed class NagService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("UpdateNag started (DryRun={DryRun}); first check in {Delay}", _options.DryRun, _options.StartupDelay);
+        _logger.LogInformation("Extensor.WindowsUpdatesMonitor started (DryRun={DryRun}); first check in {Delay}", _options.DryRun, _options.StartupDelay);
         await Task.Delay(_options.StartupDelay, stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -78,7 +78,7 @@ public sealed class NagService : BackgroundService
 
             await _reporter.ReportAsync(result, stoppingToken);
             if (result.AnythingPending)
-                NagSessions(result, _messenger.GetActiveSessions(), skipAlreadyNagged: true);
+                NotifySessions(result, _messenger.GetActiveSessions(), skipAlreadyNotified: true);
         }
     }
 
@@ -103,7 +103,7 @@ public sealed class NagService : BackgroundService
                     return;
 
                 var session = _messenger.GetActiveSessions().Where(s => s.SessionId == sessionId).ToList();
-                NagSessions(result, session, skipAlreadyNagged: true);
+                NotifySessions(result, session, skipAlreadyNotified: true);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -113,8 +113,8 @@ public sealed class NagService : BackgroundService
         });
     }
 
-    /// <summary>--nag-now: check immediately and message every active session, ignoring schedule and saved state.</summary>
-    public async Task<int> NagNowAsync()
+    /// <summary>--notify-now: check immediately and message every active session, ignoring schedule and saved state.</summary>
+    public async Task<int> NotifyNowAsync()
     {
         CheckResult result;
         try
@@ -133,22 +133,22 @@ public sealed class NagService : BackgroundService
             return 0;
         }
 
-        NagSessions(result, _messenger.GetActiveSessions(), skipAlreadyNagged: false);
+        NotifySessions(result, _messenger.GetActiveSessions(), skipAlreadyNotified: false);
         return 0;
     }
 
-    private void NagSessions(CheckResult result, List<UserSession> sessions, bool skipAlreadyNagged)
+    private void NotifySessions(CheckResult result, List<UserSession> sessions, bool skipAlreadyNotified)
     {
         string body = BuildMessage(result);
         foreach (var session in sessions)
         {
-            if (skipAlreadyNagged)
+            if (skipAlreadyNotified)
             {
                 lock (_lock)
                 {
-                    if (_state.WasNaggedToday(session.UserName))
+                    if (_state.WasNotifiedToday(session.UserName))
                     {
-                        _logger.LogInformation("{User} was already nagged today, skipping", session.UserName);
+                        _logger.LogInformation("{User} was already notified today, skipping", session.UserName);
                         continue;
                     }
                 }
@@ -167,11 +167,11 @@ public sealed class NagService : BackgroundService
                 continue;
             }
 
-            if (skipAlreadyNagged)
+            if (skipAlreadyNotified)
             {
                 lock (_lock)
                 {
-                    _state.MarkNagged(session.UserName);
+                    _state.MarkNotified(session.UserName);
                     SaveState();
                 }
             }
@@ -203,16 +203,16 @@ public sealed class NagService : BackgroundService
         return sb.ToString();
     }
 
-    private NagState LoadState()
+    private MonitorState LoadState()
     {
         try
         {
-            return NagState.Load();
+            return MonitorState.Load();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Could not read state file; starting fresh");
-            return new NagState();
+            return new MonitorState();
         }
     }
 

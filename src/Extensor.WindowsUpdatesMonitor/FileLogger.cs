@@ -1,6 +1,6 @@
-namespace UpdateNag;
+namespace Extensor.WindowsUpdatesMonitor;
 
-/// <summary>Minimal daily-rolling text file logger: logs\updatenag-yyyyMMdd.log, keeps 14 days.</summary>
+/// <summary>Minimal daily-rolling text file logger: logs\windowsupdatesmonitor-yyyyMMdd.log, keeps 14 days.</summary>
 public sealed class FileLoggerProvider : ILoggerProvider
 {
     private const int RetainDays = 14;
@@ -20,7 +20,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
         {
             try
             {
-                var file = Path.Combine(_directory, $"updatenag-{DateTime.Now:yyyyMMdd}.log");
+                var file = Path.Combine(_directory, $"windowsupdatesmonitor-{DateTime.Now:yyyyMMdd}.log");
                 if (file != _currentFile)
                 {
                     Directory.CreateDirectory(_directory);
@@ -38,7 +38,7 @@ public sealed class FileLoggerProvider : ILoggerProvider
 
     private void DeleteOldFiles()
     {
-        foreach (var file in Directory.GetFiles(_directory, "updatenag-*.log"))
+        foreach (var file in Directory.GetFiles(_directory, "windowsupdatesmonitor-*.log"))
         {
             if (File.GetLastWriteTime(file) < DateTime.Now.AddDays(-RetainDays))
                 File.Delete(file);

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace UpdateNag;
+namespace Extensor.WindowsUpdatesMonitor;
 
 public sealed record UserSession(int SessionId, string UserName);
 

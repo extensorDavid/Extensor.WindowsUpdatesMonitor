@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace UpdateNag;
+namespace Extensor.WindowsUpdatesMonitor;
 
 /// <summary>Asks the Windows Update Agent (late-bound COM) for pending updates and checks for a pending reboot.</summary>
 public sealed class UpdateChecker
@@ -42,7 +42,7 @@ public sealed class UpdateChecker
 
         var sessionType = Type.GetTypeFromProgID("Microsoft.Update.Session", throwOnError: true)!;
         dynamic session = Activator.CreateInstance(sessionType)!;
-        session.ClientApplicationID = "UpdateNag";
+        session.ClientApplicationID = "Extensor.WindowsUpdatesMonitor";
         dynamic searcher = session.CreateUpdateSearcher();
         dynamic result = searcher.Search(Criteria);
 

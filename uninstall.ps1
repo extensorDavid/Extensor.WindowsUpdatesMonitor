@@ -1,19 +1,19 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Removes the UpdateNag Windows service.
+    Removes the Extensor.WindowsUpdatesMonitor Windows service.
 .PARAMETER InstallDir
-    Install folder to delete (default: C:\Program Files\Extensor.WindowsUpdatesNagger).
+    Install folder to delete (default: C:\Program Files\Extensor.WindowsUpdatesMonitor).
 .PARAMETER RemoveData
-    Also delete %ProgramData%\UpdateNag (state and logs).
+    Also delete %ProgramData%\Extensor.WindowsUpdatesMonitor (state and logs).
 #>
 param(
-    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesNagger'),
+    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesMonitor'),
     [switch]$RemoveData
 )
 
 $ErrorActionPreference = 'Stop'
-$serviceName = 'UpdateNag'
+$serviceName = 'Extensor.WindowsUpdatesMonitor'
 
 $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($service) {
@@ -40,7 +40,7 @@ if (Test-Path $InstallDir) {
     Remove-Item $InstallDir -Recurse -Force
 }
 
-$dataDir = Join-Path $env:ProgramData 'UpdateNag'
+$dataDir = Join-Path $env:ProgramData 'Extensor.WindowsUpdatesMonitor'
 if ($RemoveData -and (Test-Path $dataDir)) {
     Write-Host "Removing $dataDir"
     Remove-Item $dataDir -Recurse -Force
