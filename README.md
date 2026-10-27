@@ -4,7 +4,7 @@ A small Windows service that checks every 2 hours for pending Windows Updates (o
 
 - Runs as LocalSystem, Automatic (Delayed Start).
 - Uses the Windows Update Agent COM API (`IsInstalled=0 and IsHidden=0 and Type='Software'`) and the `RebootRequired` / `RebootPending` registry keys.
-- Messages are sent with `WTSSendMessage` (OK button only, never blocks, auto-closes after 1 hour).
+- Messages are sent with `WTSSendMessage` (OK button only, never blocks, auto-closes after 1 hour), in English and then Norwegian.
 - Users who log on later the same day are nagged ~2 minutes after logon, using the cached result of the last check.
 - Each user is nagged at most once per day; state survives restarts in `%ProgramData%\UpdateNag\state.json`.
 - If a check fails (offline, WU busy, COM error) it is logged, reported, and retried an hour later; nobody is nagged.
@@ -40,6 +40,8 @@ Restart the service after changing settings.
 ## Intranet reporting
 
 Set `ReportUrl` to `https://<intranet>/WindowsUpdatesNagger/Api/Report`. The service runs as LocalSystem, so the call is made with Windows authentication as the PC's own domain account (`DOMAIN\PC01$`): no password or key is stored on the PC. The intranet only accepts computer accounts there, takes the machine name from the account and the IP address from the connection, and keeps one row per machine in `WindowsUpdatesNaggerStatus` (create script: `Extensor.Intranet/Sql/WindowsUpdatesNaggerStatus.sql` in the intranet repo). This needs domain-joined PCs.
+
+If the intranet can't be reached (off-site, not on the domain, intranet down), the service logs that once and carries on with message boxes only; it tries again at every check and logs once when contact is back.
 
 `--nag-now` does not report.
 

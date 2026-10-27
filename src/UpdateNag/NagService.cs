@@ -9,7 +9,7 @@ namespace UpdateNag;
 /// </summary>
 public sealed class NagService : BackgroundService
 {
-    private const string Title = "Windows Updates pending";
+    private const string Title = "Windows Updates pending / Windows-oppdateringer venter";
 
     // Even when the next check is far away, wake up hourly: timers don't advance while the machine sleeps.
     private static readonly TimeSpan MaxSleep = TimeSpan.FromHours(1);
@@ -178,6 +178,7 @@ public sealed class NagService : BackgroundService
         }
     }
 
+    /// <summary>English first, then a blank line and the same in Norwegian (the update titles are only listed once).</summary>
     private string BuildMessage(CheckResult result)
     {
         var sb = new StringBuilder();
@@ -188,14 +189,17 @@ public sealed class NagService : BackgroundService
                 sb.AppendLine($"  • {title}");
             if (result.UpdateCount > _options.MaxTitles)
                 sb.AppendLine($"  …and {result.UpdateCount - _options.MaxTitles} more");
-            sb.AppendLine();
         }
         if (result.RebootPending)
-        {
             sb.AppendLine("A restart is required to finish installing updates.");
-            sb.AppendLine();
-        }
-        sb.Append("Please open Settings → Windows Update to install them.");
+        sb.AppendLine("Please open Settings → Windows Update to install them.");
+
+        sb.AppendLine();
+        if (result.UpdateCount > 0)
+            sb.AppendLine($"{result.UpdateCount} Windows-oppdatering(er) venter på å bli installert.");
+        if (result.RebootPending)
+            sb.AppendLine("Datamaskinen må startes på nytt for å fullføre installasjonen av oppdateringer.");
+        sb.Append("Åpne Innstillinger → Windows Update for å installere dem.");
         return sb.ToString();
     }
 

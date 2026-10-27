@@ -17,6 +17,7 @@ public sealed class IntranetReporter : IDisposable
 
     private readonly NagOptions _options;
     private readonly ILogger<IntranetReporter> _logger;
+    private bool _unreachable;
 
     public IntranetReporter(IOptions<NagOptions> options, ILogger<IntranetReporter> logger)
     {
@@ -24,7 +25,7 @@ public sealed class IntranetReporter : IDisposable
         _logger = logger;
     }
 
-    /// <summary>Reports a successful check. Never throws: a failed report is logged and the next check reports again.</summary>
+    /// <summary>Reports a successful check. Never throws: if the intranet can't be reached the next check tries again.</summary>
     public Task ReportAsync(CheckResult result, CancellationToken cancellationToken) =>
         PostAsync(new
         {
@@ -59,18 +60,36 @@ public sealed class IntranetReporter : IDisposable
         if (string.IsNullOrWhiteSpace(_options.ReportUrl))
             return;
 
+        string? problem;
         try
         {
             using var response = await _http.PostAsJsonAsync(_options.ReportUrl, report, cancellationToken);
-            if (response.IsSuccessStatusCode)
-                _logger.LogInformation("Reported status to {Url}", _options.ReportUrl);
-            else
-                _logger.LogWarning("Intranet report failed: {Status} {Body}", (int)response.StatusCode,
-                    await response.Content.ReadAsStringAsync(cancellationToken));
+            problem = response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "Intranet report to {Url} failed", _options.ReportUrl);
+            problem = ex is OperationCanceledException ? "timed out" : ex.Message;
+        }
+
+        // Not being able to reach the intranet is normal for some PCs (off-site, not on the domain): say so once,
+        // carry on with the message boxes, and try again at the next check.
+        if (problem == null)
+        {
+            if (_unreachable)
+                _logger.LogInformation("The intranet is reachable again; status reports resumed");
+            else
+                _logger.LogDebug("Reported status to {Url}", _options.ReportUrl);
+            _unreachable = false;
+        }
+        else if (!_unreachable)
+        {
+            _logger.LogInformation("Could not report status to the intranet ({Problem}). Message boxes work as usual; " +
+                                   "will try again at the next check", problem);
+            _unreachable = true;
+        }
+        else
+        {
+            _logger.LogDebug("Intranet still not reachable ({Problem})", problem);
         }
     }
 
