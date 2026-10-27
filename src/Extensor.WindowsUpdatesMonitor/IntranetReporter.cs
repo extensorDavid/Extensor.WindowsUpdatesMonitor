@@ -1,11 +1,14 @@
 using System.Net.Http.Json;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using Microsoft.Extensions.Options;
 
 namespace Extensor.WindowsUpdatesMonitor;
 
 /// <summary>
 /// Posts each check's result, with a Norwegian status line, to the intranet (table WindowsUpdatesMonitorStatus).
-/// The report carries the machine name; the intranet takes the IP address from the connection. The call signs in
+/// The report carries the machine name and IP address (the intranet only sees the router's address on the
+/// connection). The call signs in
 /// with Windows authentication as the PC's domain account (the service runs as LocalSystem).
 /// </summary>
 public sealed class IntranetReporter : IDisposable
@@ -30,6 +33,7 @@ public sealed class IntranetReporter : IDisposable
         PostAsync(new
         {
             Environment.MachineName,
+            IpAddress = LocalIpAddress(),
             CheckedAtUtc = DateTime.UtcNow,
             Status = StatusText(result),
             UpdateCount = (int?)result.UpdateCount,
@@ -42,12 +46,36 @@ public sealed class IntranetReporter : IDisposable
         PostAsync(new
         {
             Environment.MachineName,
+            IpAddress = LocalIpAddress(),
             CheckedAtUtc = DateTime.UtcNow,
             Status = $"Feil: {error.Message}",
             UpdateCount = (int?)null,
             RebootPending = (bool?)null,
             UpdateTitles = new List<string>(),
         }, cancellationToken);
+
+    /// <summary>The IPv4 address of the network adapter that has a default gateway (the LAN one, not Hyper-V/WSL).</summary>
+    private static string? LocalIpAddress()
+    {
+        try
+        {
+            foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (nic.OperationalStatus != OperationalStatus.Up
+                    || nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
+                    continue;
+                var props = nic.GetIPProperties();
+                if (!props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork
+                                                     && !g.Address.Equals(System.Net.IPAddress.Any)))
+                    continue;
+                var address = props.UnicastAddresses.FirstOrDefault(a => a.Address.AddressFamily == AddressFamily.InterNetwork);
+                if (address != null)
+                    return address.Address.ToString();
+            }
+        }
+        catch (NetworkInformationException) { }
+        return null;
+    }
 
     public static string StatusText(CheckResult result) => (result.UpdateCount, result.RebootPending) switch
     {
