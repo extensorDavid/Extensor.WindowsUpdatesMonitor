@@ -21,6 +21,7 @@ public sealed class IntranetReporter : IDisposable
     private readonly MonitorOptions _options;
     private readonly ILogger<IntranetReporter> _logger;
     private bool _unreachable;
+    private bool _adaptersLogged;
 
     public IntranetReporter(IOptions<MonitorOptions> options, ILogger<IntranetReporter> logger)
     {
@@ -54,27 +55,47 @@ public sealed class IntranetReporter : IDisposable
             UpdateTitles = new List<string>(),
         }, cancellationToken);
 
-    /// <summary>The IPv4 address of the network adapter that has a default gateway (the LAN one, not Hyper-V/WSL).</summary>
-    private static string? LocalIpAddress()
+    /// <summary>
+    /// The IPv4 address of the network adapter that has a default gateway (the LAN one, not Hyper-V/WSL).
+    /// The first time, every adapter and the choice are logged, to see why a PC reports the address it does.
+    /// </summary>
+    private string? LocalIpAddress()
     {
+        string? chosen = null;
+        var lines = new List<string>();
         try
         {
             foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
             {
-                if (nic.OperationalStatus != OperationalStatus.Up
-                    || nic.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
-                    continue;
                 var props = nic.GetIPProperties();
-                if (!props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork
-                                                     && !g.Address.Equals(System.Net.IPAddress.Any)))
-                    continue;
-                var address = props.UnicastAddresses.FirstOrDefault(a => a.Address.AddressFamily == AddressFamily.InterNetwork);
-                if (address != null)
-                    return address.Address.ToString();
+                var ipv4 = props.UnicastAddresses.Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork)
+                                                 .Select(a => a.Address.ToString()).ToList();
+                var gateways = props.GatewayAddresses.Where(g => g.Address.AddressFamily == AddressFamily.InterNetwork
+                                                                 && !g.Address.Equals(System.Net.IPAddress.Any))
+                                                     .Select(g => g.Address.ToString()).ToList();
+                bool candidate = nic.OperationalStatus == OperationalStatus.Up
+                                 && nic.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)
+                                 && gateways.Count > 0 && ipv4.Count > 0;
+                if (candidate && chosen == null)
+                    chosen = ipv4[0];
+                lines.Add($"  {nic.Name} ({nic.Description}): {nic.NetworkInterfaceType}, {nic.OperationalStatus}, " +
+                          $"IPv4 [{string.Join(", ", ipv4)}], gateway [{string.Join(", ", gateways)}]" +
+                          (candidate ? (chosen == ipv4[0] ? "  <- used" : "  (also possible)") : ""));
             }
         }
-        catch (NetworkInformationException) { }
-        return null;
+        catch (NetworkInformationException ex)
+        {
+            lines.Add($"  could not list the network adapters: {ex.Message}");
+        }
+
+        if (!_adaptersLogged)
+        {
+            _logger.LogInformation("IP address for the intranet report: {Ip}. Network adapters:{NewLine}{Adapters}",
+                chosen ?? "(none found; the intranet will use the connection's address)", Environment.NewLine,
+                string.Join(Environment.NewLine, lines));
+            _adaptersLogged = true;
+        }
+        return chosen;
     }
 
     public static string StatusText(CheckResult result) => (result.UpdateCount, result.RebootPending) switch
@@ -88,10 +109,13 @@ public sealed class IntranetReporter : IDisposable
     private async Task PostAsync(object report, CancellationToken cancellationToken)
     {
         string? problem;
+        string reply = "";
         try
         {
             using var response = await _http.PostAsJsonAsync(_options.ReportUrl, report, cancellationToken);
             problem = response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}";
+            if (problem == null)
+                reply = await response.Content.ReadAsStringAsync(cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
@@ -104,8 +128,8 @@ public sealed class IntranetReporter : IDisposable
         {
             if (_unreachable)
                 _logger.LogInformation("The intranet is reachable again; status reports resumed");
-            else
-                _logger.LogDebug("Reported status to {Url}", _options.ReportUrl);
+            // The reply says what the intranet stored, e.g. {"ok":true,"machineName":"PC01","ipAddress":"172.24.1.57"}
+            _logger.LogInformation("Reported status to the intranet; it stored: {Reply}", reply);
             _unreachable = false;
         }
         else if (!_unreachable)
