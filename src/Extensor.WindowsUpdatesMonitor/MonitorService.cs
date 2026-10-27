@@ -43,13 +43,17 @@ public sealed class MonitorService : BackgroundService
         _logger.LogInformation("Extensor.WindowsUpdatesMonitor started (DryRun={DryRun}); first check in {Delay}", _options.DryRun, _options.StartupDelay);
         await Task.Delay(_options.StartupDelay, stoppingToken);
 
+        // Every (re)start checks straight away, whatever the last check's time; users still get at most one
+        // message a day. After that, every CheckInterval.
+        bool firstCheck = true;
         while (!stoppingToken.IsCancellationRequested)
         {
             DateTimeOffset? lastCheck;
             lock (_lock)
                 lastCheck = _state.LastCheckUtc;
 
-            var untilDue = lastCheck is null ? TimeSpan.Zero : lastCheck.Value + _options.CheckInterval - DateTimeOffset.UtcNow;
+            var untilDue = firstCheck || lastCheck is null ? TimeSpan.Zero : lastCheck.Value + _options.CheckInterval - DateTimeOffset.UtcNow;
+            firstCheck = false;
             if (untilDue > TimeSpan.Zero)
             {
                 await Task.Delay(untilDue < MaxSleep ? untilDue : MaxSleep, stoppingToken);

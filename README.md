@@ -2,7 +2,7 @@
 
 A small Windows service that checks every 2 hours for pending Windows Updates (or a pending restart), reports the result to the Extensor intranet, and, if anything is pending, pops up a message box in every logged-in user's session telling them to open **Settings → Windows Update**.
 
-- Runs as LocalSystem, Automatic (Delayed Start).
+- Runs as LocalSystem, Automatic (Delayed Start). Every start (or restart) of the service checks within 10 seconds, then every 2 hours.
 - Uses the Windows Update Agent COM API (`IsInstalled=0 and IsHidden=0 and Type='Software'`) and the `RebootRequired` / `RebootPending` registry keys.
 - Messages are sent with `WTSSendMessage` (OK button only, never blocks, auto-closes after 1 hour), in English and then Norwegian.
 - Users who log on later the same day are reminded ~2 minutes after logon, using the cached result of the last check.
@@ -27,7 +27,7 @@ This produces a self-contained single-file `publish\Extensor.WindowsUpdatesMonit
 | Setting          | Default      | Meaning                                                    |
 |------------------|--------------|------------------------------------------------------------|
 | `CheckInterval`  | `02:00:00`   | How often to check                                         |
-| `StartupDelay`   | `00:00:10`   | Wait after service start before the first check (the `appsettings.json` in the repo sets 5 minutes) |
+| `StartupDelay`   | `00:00:10`   | Wait after service start before the first check            |
 | `RetryDelay`     | `01:00:00`   | Wait before retrying a failed check                        |
 | `LogonDelay`     | `00:02:00`   | Wait after a user logs on before reminding them            |
 | `MessageTimeout` | `01:00:00`   | Message box closes itself after this long                  |
@@ -75,7 +75,7 @@ Run in a console instead of as a service:
 
 Run from an elevated prompt so it can read/write `%ProgramData%\Extensor.WindowsUpdatesMonitor` and message other users' sessions; unelevated, it can still message your own session. Set `"DryRun": true` in `appsettings.json` to see the message in the log without popping anything up.
 
-To force the service to check again, stop it, delete `%ProgramData%\Extensor.WindowsUpdatesMonitor\state.json` and start it; the check runs after the startup delay.
+To force a check (and a report to the intranet), restart the service: it checks within 10 seconds of starting.
 
 ## Uninstall
 
