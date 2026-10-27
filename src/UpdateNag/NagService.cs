@@ -3,7 +3,10 @@ using Microsoft.Extensions.Options;
 
 namespace UpdateNag;
 
-/// <summary>Checks for pending Windows Updates once a day and nags logged-in users about them.</summary>
+/// <summary>
+/// Checks for pending Windows Updates every 2 hours, reports the result to the intranet, and nags logged-in users
+/// about pending updates (each user at most once a day).
+/// </summary>
 public sealed class NagService : BackgroundService
 {
     private const string Title = "Windows Updates pending";
@@ -11,19 +14,24 @@ public sealed class NagService : BackgroundService
     // Even when the next check is far away, wake up hourly: timers don't advance while the machine sleeps.
     private static readonly TimeSpan MaxSleep = TimeSpan.FromHours(1);
 
+    // Users logging on are nagged from the last check's result while it is less than a day old.
+    private static readonly TimeSpan ResultMaxAge = TimeSpan.FromHours(24);
+
     private readonly UpdateChecker _checker;
     private readonly SessionMessenger _messenger;
+    private readonly IntranetReporter _reporter;
     private readonly NagOptions _options;
     private readonly ILogger<NagService> _logger;
     private readonly CancellationToken _stopping;
     private readonly object _lock = new();
     private readonly NagState _state;
 
-    public NagService(UpdateChecker checker, SessionMessenger messenger, IOptions<NagOptions> options,
+    public NagService(UpdateChecker checker, SessionMessenger messenger, IntranetReporter reporter, IOptions<NagOptions> options,
         IHostApplicationLifetime lifetime, ILogger<NagService> logger)
     {
         _checker = checker;
         _messenger = messenger;
+        _reporter = reporter;
         _options = options.Value;
         _logger = logger;
         _stopping = lifetime.ApplicationStopping;
@@ -56,6 +64,7 @@ public sealed class NagService : BackgroundService
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogError(ex, "Update check failed; retrying in {Delay}", _options.RetryDelay);
+                await _reporter.ReportErrorAsync(ex, stoppingToken);
                 await Task.Delay(_options.RetryDelay, stoppingToken);
                 continue;
             }
@@ -67,6 +76,7 @@ public sealed class NagService : BackgroundService
                 SaveState();
             }
 
+            await _reporter.ReportAsync(result, stoppingToken);
             if (result.AnythingPending)
                 NagSessions(result, _messenger.GetActiveSessions(), skipAlreadyNagged: true);
         }
@@ -86,7 +96,7 @@ public sealed class NagService : BackgroundService
                 CheckResult? result;
                 lock (_lock)
                 {
-                    bool fresh = _state.LastCheckUtc is { } last && DateTimeOffset.UtcNow - last < _options.CheckInterval;
+                    bool fresh = _state.LastCheckUtc is { } last && DateTimeOffset.UtcNow - last < ResultMaxAge;
                     result = fresh ? _state.LastResult : null;
                 }
                 if (result is not { AnythingPending: true })

@@ -29,6 +29,7 @@ else
 builder.Services.AddWindowsService(o => o.ServiceName = "UpdateNag");
 builder.Services.AddSingleton<UpdateChecker>();
 builder.Services.AddSingleton<SessionMessenger>();
+builder.Services.AddSingleton<IntranetReporter>();
 builder.Services.AddSingleton<NagService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NagService>());
 if (isService)

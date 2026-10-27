@@ -1,13 +1,14 @@
 # UpdateNag
 
-A small Windows service that checks once a day for pending Windows Updates (or a pending restart) and, if there are any, pops up a message box in every logged-in user's session telling them to open **Settings → Windows Update**.
+A small Windows service that checks every 2 hours for pending Windows Updates (or a pending restart), reports the result to the Extensor intranet, and, if anything is pending, pops up a message box in every logged-in user's session telling them to open **Settings → Windows Update**.
 
 - Runs as LocalSystem, Automatic (Delayed Start).
 - Uses the Windows Update Agent COM API (`IsInstalled=0 and IsHidden=0 and Type='Software'`) and the `RebootRequired` / `RebootPending` registry keys.
 - Messages are sent with `WTSSendMessage` (OK button only, never blocks, auto-closes after 1 hour).
 - Users who log on later the same day are nagged ~2 minutes after logon, using the cached result of the last check.
 - Each user is nagged at most once per day; state survives restarts in `%ProgramData%\UpdateNag\state.json`.
-- If a check fails (offline, WU busy, COM error) it is logged and retried an hour later; nobody is nagged.
+- If a check fails (offline, WU busy, COM error) it is logged, reported, and retried an hour later; nobody is nagged.
+- After every check it posts a Norwegian status line ("Ingen oppdateringer nødvendig", "Oppdateringer kreves (3)", "Omstart kreves for å fullføre oppdateringer", "Feil: ...") to `ReportUrl`. The intranet shows the machines under *Windows-oppdateringer* on the dashboard.
 
 ## Build
 
@@ -25,15 +26,22 @@ This produces a self-contained single-file `publish\UpdateNag.exe` (win-x64) plu
 
 | Setting          | Default      | Meaning                                                    |
 |------------------|--------------|------------------------------------------------------------|
-| `CheckInterval`  | `1.00:00:00` | How often to check; also how long a cached result is valid |
+| `CheckInterval`  | `02:00:00`   | How often to check                                         |
 | `StartupDelay`   | `00:05:00`   | Wait after service start before the first check            |
 | `RetryDelay`     | `01:00:00`   | Wait before retrying a failed check                        |
 | `LogonDelay`     | `00:02:00`   | Wait after a user logs on before nagging them              |
 | `MessageTimeout` | `01:00:00`   | Message box closes itself after this long                  |
 | `MaxTitles`      | `5`          | Update titles listed in the message                        |
+| `ReportUrl`      | (empty)      | Intranet endpoint for status reports; empty turns them off |
 | `DryRun`         | `false`      | Log the message instead of sending it                      |
 
 Restart the service after changing settings.
+
+## Intranet reporting
+
+Set `ReportUrl` to `https://<intranet>/WindowsUpdatesNagger/Api/Report`. The service runs as LocalSystem, so the call is made with Windows authentication as the PC's own domain account (`DOMAIN\PC01$`): no password or key is stored on the PC. The intranet only accepts computer accounts there, takes the machine name from the account and the IP address from the connection, and keeps one row per machine in `WindowsUpdatesNaggerStatus` (create script: `Extensor.Intranet/Sql/WindowsUpdatesNaggerStatus.sql` in the intranet repo). This needs domain-joined PCs.
+
+`--nag-now` does not report.
 
 ## Logs
 
