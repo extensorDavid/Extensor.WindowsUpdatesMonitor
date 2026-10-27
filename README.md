@@ -8,7 +8,7 @@ A small Windows service that checks every 2 hours for pending Windows Updates (o
 - Users who log on later the same day are nagged ~2 minutes after logon, using the cached result of the last check.
 - Each user is nagged at most once per day; state survives restarts in `%ProgramData%\UpdateNag\state.json`.
 - If a check fails (offline, WU busy, COM error) it is logged, reported, and retried an hour later; nobody is nagged.
-- After every check it posts a Norwegian status line ("Ingen oppdateringer nødvendig", "Oppdateringer kreves (3)", "Omstart kreves for å fullføre oppdateringer", "Feil: ...") to `ReportUrl`. The intranet shows the machines under *Windows-oppdateringer* on the dashboard.
+- After every check it posts a Norwegian status line ("Ingen oppdateringer nødvendig", "Oppdateringer kreves (3)", "Omstart kreves for å fullføre oppdateringer", "Feil: ...") to the intranet (`https://intranet.extensor.no/WindowsUpdatesNagger/Api/Report`, built in). The intranet shows the machines under *Windows-oppdateringer* on the dashboard.
 
 ## Build
 
@@ -32,14 +32,13 @@ This produces a self-contained single-file `publish\UpdateNag.exe` (win-x64) plu
 | `LogonDelay`     | `00:02:00`   | Wait after a user logs on before nagging them              |
 | `MessageTimeout` | `01:00:00`   | Message box closes itself after this long                  |
 | `MaxTitles`      | `5`          | Update titles listed in the message                        |
-| `ReportUrl`      | (empty)      | Intranet endpoint for status reports; empty turns them off |
 | `DryRun`         | `false`      | Log the message instead of sending it                      |
 
 Restart the service after changing settings.
 
 ## Intranet reporting
 
-Set `ReportUrl` to `https://<intranet>/WindowsUpdatesNagger/Api/Report`. The service runs as LocalSystem, so the call is made with Windows authentication as the PC's own domain account (`DOMAIN\PC01$`): no password or key is stored on the PC. The intranet only accepts computer accounts there, takes the machine name from the account and the IP address from the connection, and keeps one row per machine in `WindowsUpdatesNaggerStatus` (create script: `Extensor.Intranet/Sql/WindowsUpdatesNaggerStatus.sql` in the intranet repo). This needs domain-joined PCs.
+Nothing to configure: the service posts to `https://intranet.extensor.no/WindowsUpdatesNagger/Api/Report`. (Only to use another address: add `"ReportUrl"` to the `UpdateNag` section of `appsettings.json`.) The service runs as LocalSystem, so the call is made with Windows authentication as the PC's own domain account (`DOMAIN\PC01$`): no password or key is stored on the PC. The intranet only accepts computer accounts there, takes the machine name from the account and the IP address from the connection, and keeps one row per machine in the `WindowsUpdatesNaggerStatus` table. This needs domain-joined PCs.
 
 If the intranet can't be reached (off-site, not on the domain, intranet down), the service logs that once and carries on with message boxes only; it tries again at every check and logs once when contact is back.
 

@@ -47,6 +47,9 @@ public sealed class IntranetReporter : IDisposable
             UpdateTitles = new List<string>(),
         }, cancellationToken);
 
+    // An empty setting (as written by older versions of appsettings.json) means the built-in address.
+    private string ReportUrl => string.IsNullOrWhiteSpace(_options.ReportUrl) ? NagOptions.DefaultReportUrl : _options.ReportUrl;
+
     public static string StatusText(CheckResult result) => (result.UpdateCount, result.RebootPending) switch
     {
         (0, false) => "Ingen oppdateringer nødvendig",
@@ -57,13 +60,10 @@ public sealed class IntranetReporter : IDisposable
 
     private async Task PostAsync(object report, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_options.ReportUrl))
-            return;
-
         string? problem;
         try
         {
-            using var response = await _http.PostAsJsonAsync(_options.ReportUrl, report, cancellationToken);
+            using var response = await _http.PostAsJsonAsync(ReportUrl, report, cancellationToken);
             problem = response.IsSuccessStatusCode ? null : $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
@@ -78,7 +78,7 @@ public sealed class IntranetReporter : IDisposable
             if (_unreachable)
                 _logger.LogInformation("The intranet is reachable again; status reports resumed");
             else
-                _logger.LogDebug("Reported status to {Url}", _options.ReportUrl);
+                _logger.LogDebug("Reported status to {Url}", ReportUrl);
             _unreachable = false;
         }
         else if (!_unreachable)
