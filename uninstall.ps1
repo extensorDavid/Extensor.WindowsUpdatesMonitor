@@ -2,13 +2,13 @@
 <#
 .SYNOPSIS
     Removes the Extensor.WindowsUpdatesMonitor Windows service.
-.PARAMETER InstallDir
-    Install folder to delete (default: C:\Program Files\Extensor.WindowsUpdatesMonitor).
+.DESCRIPTION
+    Stops and deletes the service and its Event Log source. The folder with the exe (and these scripts) is left
+    alone; delete it by hand if it is no longer wanted.
 .PARAMETER RemoveData
     Also delete %ProgramData%\Extensor.WindowsUpdatesMonitor (state and logs).
 #>
 param(
-    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesMonitor'),
     [switch]$RemoveData
 )
 
@@ -33,11 +33,6 @@ else {
 if ([System.Diagnostics.EventLog]::SourceExists($serviceName)) {
     Write-Host "Removing Event Log source '$serviceName'"
     [System.Diagnostics.EventLog]::DeleteEventSource($serviceName)
-}
-
-if (Test-Path $InstallDir) {
-    Write-Host "Removing $InstallDir"
-    Remove-Item $InstallDir -Recurse -Force
 }
 
 $dataDir = Join-Path $env:ProgramData 'Extensor.WindowsUpdatesMonitor'

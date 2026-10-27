@@ -18,7 +18,7 @@ Requires the .NET 8 SDK.
 dotnet publish src/Extensor.WindowsUpdatesMonitor -c Release -o publish
 ```
 
-This produces a self-contained single-file `publish\Extensor.WindowsUpdatesMonitor.exe` (win-x64) plus an optional `appsettings.json` (the defaults are built in).
+This produces a self-contained single-file `publish\Extensor.WindowsUpdatesMonitor.exe` (win-x64) plus an optional `appsettings.json` (the defaults are built in), and `install.ps1` / `uninstall.ps1`.
 
 ## Configuration
 
@@ -51,13 +51,13 @@ If the intranet can't be reached (off-site, not on the domain, intranet down), t
 
 ## Install
 
-Put `install.ps1` next to `Extensor.WindowsUpdatesMonitor.exe` (or run it from the repository root after publishing; it also looks in `.\publish`), then from an elevated PowerShell prompt:
+Put `Extensor.WindowsUpdatesMonitor.exe`, `install.ps1` and `uninstall.ps1` in the folder the service should run from, e.g. `C:\Program Files\Extensor\Extensor.WindowsUpdatesMonitor`, then from an elevated PowerShell prompt in that folder:
 
 ```powershell
 .\install.ps1
 ```
 
-This copies the files to `C:\Program Files\Extensor.WindowsUpdatesMonitor`, registers the `Extensor.WindowsUpdatesMonitor` Event Log source, creates the `Extensor.WindowsUpdatesMonitor` service ("Extensor Windows Updates Monitor": LocalSystem, Automatic (Delayed Start), restart on failure), starts it and checks it is running. Re-running it upgrades the exe and keeps an existing `appsettings.json`.
+The service runs the exe in the script's folder; nothing is copied. It registers the `Extensor.WindowsUpdatesMonitor` Event Log source, creates the `Extensor.WindowsUpdatesMonitor` service ("Extensor Windows Updates Monitor": LocalSystem, Automatic (Delayed Start), restart on failure), starts it and checks it is running. To upgrade, stop the service (`Stop-Service Extensor.WindowsUpdatesMonitor`), replace the exe and run `.\install.ps1` again (or just start the service).
 
 If scripts are blocked on the PC, run `Set-ExecutionPolicy -Scope Process Bypass` first in the same prompt.
 
@@ -82,6 +82,6 @@ To force a check (and a report to the intranet), restart the service: it checks 
 From an elevated PowerShell prompt:
 
 ```powershell
-.\uninstall.ps1              # stop and delete the service, remove Event Log source and program files
+.\uninstall.ps1              # stop and delete the service and its Event Log source (the folder with the exe is left)
 .\uninstall.ps1 -RemoveData  # also delete %ProgramData%\Extensor.WindowsUpdatesMonitor (state and logs)
 ```

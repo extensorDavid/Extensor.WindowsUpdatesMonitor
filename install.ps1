@@ -3,46 +3,25 @@
 .SYNOPSIS
     Installs Extensor.WindowsUpdatesMonitor.exe as the Extensor.WindowsUpdatesMonitor Windows service and starts it.
 .DESCRIPTION
-    Put this script next to Extensor.WindowsUpdatesMonitor.exe (appsettings.json is optional) and run it from an
-    elevated PowerShell prompt. Running it again upgrades an existing install.
-.PARAMETER SourceDir
-    Folder containing Extensor.WindowsUpdatesMonitor.exe (default: this script's folder, else .\publish under it).
-.PARAMETER InstallDir
-    Where to copy the files (default: C:\Program Files\Extensor.WindowsUpdatesMonitor).
+    Put this script next to Extensor.WindowsUpdatesMonitor.exe (e.g. in
+    C:\Program Files\Extensor\Extensor.WindowsUpdatesMonitor) and run it from an elevated PowerShell prompt. The
+    service runs the exe in this script's folder; nothing is copied. Running it again updates an existing install.
 #>
-param(
-    [string]$SourceDir,
-    [string]$InstallDir = (Join-Path $env:ProgramFiles 'Extensor.WindowsUpdatesMonitor')
-)
 
 $ErrorActionPreference = 'Stop'
 $serviceName = 'Extensor.WindowsUpdatesMonitor'
-$exeName = 'Extensor.WindowsUpdatesMonitor.exe'
-$exe = Join-Path $InstallDir $exeName
+$exe = Join-Path $PSScriptRoot 'Extensor.WindowsUpdatesMonitor.exe'
 
-if (-not $SourceDir) {
-    $SourceDir = $PSScriptRoot
-    if (-not (Test-Path (Join-Path $SourceDir $exeName))) { $SourceDir = Join-Path $PSScriptRoot 'publish' }
-}
-if (-not (Test-Path (Join-Path $SourceDir $exeName))) {
-    throw "$exeName not found next to this script or in .\publish. Put the exe next to install.ps1, or give -SourceDir."
+if (-not (Test-Path $exe)) {
+    throw "$exe not found. Put install.ps1 in the same folder as the exe."
 }
 
-# Stop an existing install so the exe can be overwritten.
+# Stop an existing install (it may be running from another folder).
 $existing = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($existing -and $existing.Status -ne 'Stopped') {
     Write-Host "Stopping existing service..."
     Stop-Service -Name $serviceName -Force
     $existing.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))
-}
-
-Write-Host "Copying files to $InstallDir"
-New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-Copy-Item (Join-Path $SourceDir $exeName) $InstallDir -Force
-# appsettings.json is optional (the defaults are built in). Keep a locally edited one on upgrade.
-$settings = Join-Path $SourceDir 'appsettings.json'
-if ((Test-Path $settings) -and -not (Test-Path (Join-Path $InstallDir 'appsettings.json'))) {
-    Copy-Item $settings $InstallDir
 }
 
 if (-not [System.Diagnostics.EventLog]::SourceExists($serviceName)) {

@@ -22,4 +22,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The install scripts go next to the exe in the publish folder: copy that folder to the PC and run install.ps1. -->
+    <None Include="..\..\install.ps1;..\..\uninstall.ps1" CopyToPublishDirectory="PreserveNewest" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
 </Project>
